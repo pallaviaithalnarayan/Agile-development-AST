@@ -12,11 +12,10 @@ import smach
 
 class MonitorBatteryAndCollision(smach.State):
     def __init__(self, node):
-        smach.State.__init__(self, outcomes=['low_battery', 'collision', 'healthy', 'avoid_collision'])
+        smach.State.__init__(self, outcomes=['low_battery', 'collision', 'healthy'])
         self.node = node
         self.battery_threshold = 30
         self.distance_threshold = 1
-        self.avoid_distance = 2
         self.battery_level = None
         self.collision_distance = None
         self.battery_sub = self.node.create_subscription(
@@ -42,8 +41,6 @@ class MonitorBatteryAndCollision(smach.State):
             return 'low_battery'
         elif self.collision_distance is not None and self.collision_distance < self.distance_threshold:
             return 'collision'
-        elif self.collision_distance is not None and self.collision_distance < self.avoid_distance:
-            return 'avoid_collision'
         else:
             return 'healthy'
 
@@ -92,20 +89,6 @@ class StopMotion(smach.State):
         twist.angular.z = 0.0
         self.pub.publish(twist)
         return 'stop'
-    
-class AvoidObstacle(smach.State):
-    def __init__(self, node):
-        smach.State.__init__(self, outcomes=['avoiding'])
-        self.node = node
-        self.pub = self.node.create_publisher(Twist, 'cmd_vel', 10)
-
-    def execute(self, userdata):
-        self.node.get_logger().info('Executing state Avoid Obstacle')
-        twist = Twist()
-        twist.linear.x = -0.2
-        twist.angular.z = 0.5
-        self.pub.publish(twist)
-        return 'avoiding'
 
 
 def main():
@@ -119,15 +102,13 @@ def main():
     with sm:
         # Add states to the container
         smach.StateMachine.add('MonitorBatteryAndCollision', MonitorBatteryAndCollision(node),
-                               transitions={'low_battery': 'RotateBase', 'collision': 'StopMotion', 'avoid_collision': 'AvoidObstacle','healthy': 'Move'})
+                               transitions={'low_battery': 'RotateBase', 'collision': 'StopMotion', 'healthy': 'Move'})
         smach.StateMachine.add('RotateBase', RotateBase(node),
                                transitions={'rotating': 'MonitorBatteryAndCollision'})
         smach.StateMachine.add('StopMotion', StopMotion(node),
                                transitions={'stop': 'MonitorBatteryAndCollision'})
         smach.StateMachine.add('Move', Move(node),
                                transitions={'moving': 'MonitorBatteryAndCollision'})
-        smach.StateMachine.add('AvoidObstacle', AvoidObstacle(node),
-                               transitions={'avoiding': 'MonitorBatteryAndCollision'})
 
     # Execute SMACH plan
     outcome = sm.execute()
