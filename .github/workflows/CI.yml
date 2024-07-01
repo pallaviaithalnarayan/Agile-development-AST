@@ -1,0 +1,99 @@
+# This workflow will build a golang project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
+
+name: ros2_CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  built-and-test:
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+      
+    - name: Setup ROS 2
+      uses: ros-tooling/setup-ros@v0.3
+      with:
+        required-ros-distributions: humble
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update && sudo apt-get install -y \
+        python3-colcon-common-extensions \
+        python3-vcstool \
+        ros-humble-smach-ros \
+        ros-humble-ament-cmake \
+        ros-humble-launch-testing-ament-cmake \
+        python3-pip
+        pip3 install catkin_pkg
+        
+    - name: Setup ROS 2 workspace
+      run: |
+        mkdir -p ~/ros2_smach/src
+        ln -s $GITHUB_WORKSPACE/ros2_smach ~/ros2_smach/src/
+        cd ~/ros2_smach
+        rosdep update
+        rosdep install --from-paths src --ignore-src -r -y
+
+    - name: Build the workspace
+      run: |
+        source /opt/ros/humble/setup.bash
+        cd ~/ros2_smach
+        colcon build --packages-select state_machines
+    - name: Ensuring log directory exists
+      run: mkdir -p ~/ros2_smach/log/latest_test
+
+    - name: Run Tests
+      run: |
+        source /opt/ros/humble/setup.bash
+        cd ~/ros2_smach
+        colcon test --packages-select state-machine
+        colcon test-result --all 
+    - name: Upload Logs
+      if: always()
+      uses: actions/upload-artifact@v2
+      with:
+        name: colcon-logs
+        path: ~/ros2_smach/log/latest_test
+        
+        
+
+
+
+
+
+
+        
+    # - name: Run Tests
+    #   uses: ros-tooling/action-ros-ci@0.0.13
+    #   with:
+    #     package-name: state_machine
+    # - name: Upload Logs
+    #   uses: actions/upload-artifact@v1
+    #   with:
+    #     name: colcon-logs
+    #     path: ros2_smach/log
+    #   if: always()
+
+  # build:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - uses: actions/checkout@v4
+
+  #   - name: Set up Go
+  #     uses: actions/setup-go@v4
+  #     with:
+  #       go-version: '1.20'
+
+  #   - name: Build
+  #     run: go build -v ./...
+
+  #   - name: Test
+  #     run: go test -v ./...
+
+
