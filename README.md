@@ -1,5 +1,7 @@
 # Agile-development-AST
 
+https://github.com/user-attachments/assets/f0c3bb9f-8082-4821-9073-2518c6dd99b6
+
 ## Project Overview
 
 This project demonstrates an agile development approach for autonomous robotic systems using Isaac Sim as the primary simulation environment. The framework enables the development and testing of mobile robots with capabilities for navigation, perception, manipulation, and human-robot interaction in simulated environments before deployment to physical systems.
